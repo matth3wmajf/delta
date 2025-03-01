@@ -6,7 +6,9 @@
 
 int main()
 {
-	float_t l_a = 3.0f, l_b = 2.0f, l_c = 0.0f;
+	float_t l_a = 1.432551f, l_b = 0.834239f, l_c = 0.0f;
+
+	l_c = l_a * l_b;
 
 	printf("l_a = %f l_b = %f l_c = %f\n", l_a, l_b, l_c);
 
