@@ -304,3 +304,180 @@ int fp32_mul(fp32_t *pt_c, fp32_t t_a, fp32_t t_b)
 /* ... */
 	return 0;
 }
+
+/* ... */
+int fp32_div(fp32_t *pt_c, fp32_t t_a, fp32_t t_b)
+{
+/* ... */
+	uint32_t l_a_sign = (t_a >> 31) & 0b10000000000000000000000000000000;
+
+/* ... */
+	uint32_t l_b_sign = (t_b >> 31) & 0b10000000000000000000000000000000;
+
+/* ... */
+	uint32_t l_a_exponent  = (t_a >> 23) & 0b00000000000000000000000011111111;
+
+/* ... */
+	uint32_t l_b_exponent  = (t_b >> 23) & 0b00000000000000000000000011111111;
+
+/* ... */
+	uint32_t l_a_mantissa = t_a & 0b00000000011111111111111111111111;
+
+/* ... */
+	uint32_t l_b_mantissa = t_b & 0b00000000011111111111111111111111;
+
+/* ... */
+	uint32_t l_c_sign = l_a_sign ^ l_b_sign;
+
+/* ... */
+	if(l_a_exponent == 0b00000000000000000000000011111111)
+	{
+/* ... */
+		if(l_a_mantissa != 0)
+		{
+/* ... */
+			*pt_c = t_a;
+
+/* ... */
+			return 0;
+		}
+
+/* ... */
+		if(l_b_exponent == 0b00000000000000000000000011111111)
+		{
+/* ... */
+			*pt_c = 0b01111111110000000000000000000000;
+
+/* ... */
+			return 0;
+		}
+
+/* ... */
+		*pt_c = (l_c_sign << 31) | (0b00000000000000000000000011111111 << 23);
+
+/* ... */
+		return 0;
+	}
+
+/* ... */
+	if(l_b_exponent == 0b00000000000000000000000011111111)
+	{
+/* ... */
+		if(l_b_mantissa != 0)
+		{
+/* ... */
+			*pt_c = t_b;
+
+/* ... */
+			return 0;
+		}
+
+/* ... */
+		*pt_c = (l_c_sign << 31);
+
+/* ... */
+		return 0;
+	}
+
+/* Handle the division by zero. */
+	if(l_b_exponent == 0 && l_b_mantissa == 0)
+	{
+/* ... */
+		if(l_a_exponent == 0 && l_a_mantissa == 0)
+		{
+/* ... */
+			*pt_c = 0b01111111110000000000000000000000;
+
+/* ... */
+			return 0;
+		}
+
+/* ... */
+		*pt_c = (l_c_sign << 31) | (0b00000000000000000000000011111111 << 23);
+
+/* ... */
+		return 0;
+	}
+
+/* Handle the division of zero. */
+	if(l_a_exponent == 0 && l_a_mantissa == 0)
+	{
+/* ... */
+		*pt_c = (l_c_sign << 31);
+
+/* ... */
+		return 0;
+	}
+
+/* ... */
+	uint32_t l_a_significand = (l_a_exponent != 0) ? (l_a_mantissa | 0b00000000100000000000000000000000) : l_a_mantissa;
+	uint32_t l_b_significand = (l_b_exponent != 0) ? (l_b_mantissa | 0b00000000100000000000000000000000) : l_b_mantissa;
+
+/* ... */
+	int32_t l_new_exponent = ((l_a_exponent ? l_a_exponent : 1) - (l_b_exponent ? l_b_exponent : 1) + 127);
+
+/* The divident, quotient, and remainder. */
+	uint64_t l_dividend = (uint64_t)l_a_significand << 23;
+	uint32_t l_quotient = l_dividend / l_b_significand;
+	uint64_t l_remainder = l_dividend % l_b_significand;
+
+/* Perform rounding. */
+	if((l_remainder * 2 > l_b_significand) || (l_remainder * 2 == l_b_significand && (l_quotient & 1)))
+	{
+/* ... */
+		l_quotient++;
+
+/* ... */
+		if(l_quotient == (1 << 24))
+		{
+/* ... */
+			l_quotient >>= 1;
+			l_new_exponent++;
+		}
+	}
+
+/* Normalize the quotient, if necessary. */
+	if(l_quotient < (1 << 23))
+	{
+/* ... */
+		l_quotient <<= 1;
+		l_new_exponent--;
+	}
+	else if(l_quotient >= (1 << 24))
+	{
+/* ... */
+		l_quotient >>= 1;
+		l_new_exponent++;
+	}
+
+/* Check for an overflow. */
+	if(l_new_exponent >= 0b00000000000000000000000011111111)
+	{
+/* ... */
+		*pt_c = (l_c_sign << 31) | (0b00000000000000000000000011111111 << 23);
+
+/* ... */
+		return 0;
+	}
+
+/* ... */
+	if(l_new_exponent <= 0)
+	{
+/* ... */
+		int32_t l_rshift = 1 - l_new_exponent;
+
+/* ... */
+		if(l_rshift < 24) l_quotient >>= l_rshift;
+		else l_quotient = 0;
+
+/* ... */
+		l_new_exponent = 0;
+	}
+	else l_quotient &= 0b00000000011111111111111111111111;
+
+/* ... */
+	*pt_c = (l_c_sign << 31) | (l_new_exponent << 23) | l_quotient;
+
+/* ... */
+	return 0;
+}
