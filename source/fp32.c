@@ -77,7 +77,7 @@ int fp32_add(fp32_t *pt_c, fp32_t t_a, fp32_t t_b)
 	else
 	{
 /* If the signs are different, then subtract the mantissas. */
-		if(l_a_mantissa > l_b_mantissa)
+		if(l_a_mantissa >= l_b_mantissa)
 		{
 /*
  *	If the first operand's mantissa is larger than the second operand's
@@ -96,6 +96,16 @@ int fp32_add(fp32_t *pt_c, fp32_t t_a, fp32_t t_b)
  */
 			l_c_mantissa = l_b_mantissa - l_a_mantissa;
 			l_c_sign = l_b_sign;
+		}
+
+		if(l_c_mantissa != 0)
+		{
+			while ((l_c_mantissa & 0x00800000) == 0)  // 0x00800000 corresponds to the implicit bit.
+			{
+				l_c_mantissa <<= 1;
+				l_a_exponent--;
+				if(l_a_exponent == 0) break;
+			}
 		}
 	}
 
